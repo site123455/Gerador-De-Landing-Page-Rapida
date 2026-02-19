@@ -1,0 +1,362 @@
+ladinpaji
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construtor de Páginas</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI, Arial;
+  display:flex;
+  height:100vh;
+  background:#e5e7eb;
+}
+
+.sidebar{
+  width:260px;
+  background:#111827;
+  color:white;
+  padding:15px;
+  overflow:auto;
+}
+
+.sidebar button, .sidebar select{
+  width:100%;
+  margin-bottom:10px;
+  padding:10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.sidebar button{
+  background:#22c55e;
+  color:white;
+}
+
+#canvas{
+  flex:1;
+  position:relative;
+  background:#dbeafe;
+  background-size:cover;
+  background-position:center;
+  overflow:hidden;
+}
+
+/* ===== LIXEIRA ===== */
+#trash{
+  position:absolute;
+  right:20px;
+  bottom:20px;
+  width:90px;
+  height:90px;
+  background:#ef4444;
+  color:white;
+  font-size:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:14px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.3);
+  transition:.2s;
+  z-index:999;
+}
+
+#trash.hover{
+  transform:scale(1.1);
+  background:#dc2626;
+}
+
+/* elementos */
+.draggable{
+  position:absolute;
+  resize:both;
+  overflow:hidden;
+  cursor:move;
+}
+
+.text{font-size:28px;font-weight:600;width:200px;}
+
+.button{
+  width:160px;height:50px;
+  display:flex;align-items:center;justify-content:center;
+  color:white;border-radius:8px;
+  background:#22c55e;
+}
+
+.image{width:200px;height:140px;}
+.image img{width:100%;height:100%;object-fit:cover;border-radius:12px;}
+
+.social{width:60px;height:60px;border-radius:50%;}
+.social img{width:100%;height:100%;object-fit:cover;}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h3>Páginas</h3>
+<select id="pageSelect" onchange="changePage()"></select>
+<button onclick="addPage()">+ Nova Página</button>
+
+<hr>
+
+<h3>Elementos</h3>
+<button onclick="addText()">Texto</button>
+<button onclick="addButton()">Botão</button>
+<button onclick="addImage()">Imagem</button>
+<button onclick="addSocial()">Rede Social</button>
+<button onclick="setBackground()">Fundo</button>
+
+<hr>
+
+<button onclick="exportPages()">Exportar Site</button>
+</div>
+
+<div id="canvas">
+  <div id="trash">🗑</div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const trash = document.getElementById("trash");
+
+/* ===== SISTEMA DE PÁGINAS ===== */
+let pages = [];
+let currentPage = 0;
+
+function addPage(){
+  pages.push({elements:[], background:""});
+  currentPage = pages.length-1;
+  updatePageList();
+  renderPage();
+}
+
+function updatePageList(){
+  const select = document.getElementById("pageSelect");
+  select.innerHTML="";
+  pages.forEach((p,i)=>{
+    const opt=document.createElement("option");
+    opt.value=i;
+    opt.text="Página "+(i+1);
+    select.appendChild(opt);
+  });
+  select.value=currentPage;
+}
+
+function changePage(){
+  currentPage = Number(pageSelect.value);
+  renderPage();
+}
+
+function renderPage(){
+  canvas.querySelectorAll(".draggable").forEach(e=>e.remove());
+  canvas.style.backgroundImage = pages[currentPage].background;
+
+  pages[currentPage].elements.forEach(el=>{
+    canvas.appendChild(el);
+    drag(el);
+  });
+}
+
+/* ===== ARRASTAR + APAGAR ===== */
+function drag(el){
+let ox,oy,move=false;
+
+el.onmousedown=e=>{
+move=true;
+ox=e.offsetX;
+oy=e.offsetY;
+};
+
+document.onmousemove=e=>{
+if(!move)return;
+
+const r=canvas.getBoundingClientRect();
+el.style.left=(e.clientX-r.left-ox)+"px";
+el.style.top=(e.clientY-r.top-oy)+"px";
+
+/* verifica colisão com lixeira */
+const elRect = el.getBoundingClientRect();
+const trashRect = trash.getBoundingClientRect();
+
+const colidiu =
+!(elRect.right < trashRect.left ||
+  elRect.left > trashRect.right ||
+  elRect.bottom < trashRect.top ||
+  elRect.top > trashRect.bottom);
+
+trash.classList.toggle("hover", colidiu);
+};
+
+document.onmouseup=()=>{
+if(!move)return;
+move=false;
+
+/* se soltou na lixeira → deletar */
+const elRect = el.getBoundingClientRect();
+const trashRect = trash.getBoundingClientRect();
+
+const colidiu =
+!(elRect.right < trashRect.left ||
+  elRect.left > trashRect.right ||
+  elRect.bottom < trashRect.top ||
+  elRect.top > trashRect.bottom);
+
+if(colidiu){
+  pages[currentPage].elements =
+    pages[currentPage].elements.filter(e=>e!==el);
+  el.remove();
+}
+
+trash.classList.remove("hover");
+};
+}
+
+/* ===== ELEMENTOS ===== */
+function addText(){
+const el=document.createElement("div");
+el.className="draggable text";
+el.innerText="Clique para editar";
+el.style.left="40px";
+el.style.top="40px";
+
+el.onclick=e=>{
+e.stopPropagation();
+el.innerText=prompt("Texto:",el.innerText);
+};
+
+pages[currentPage].elements.push(el);
+renderPage();
+}
+
+function addButton(){
+const el=document.createElement("div");
+el.className="draggable button";
+el.innerText="Botão";
+el.dataset.link="pagina2.html";
+
+el.style.left="60px";
+el.style.top="120px";
+
+el.onclick=e=>{
+e.stopPropagation();
+el.innerText=prompt("Texto:",el.innerText);
+const pg=prompt("Abrir qual página? (numero)");
+el.dataset.link="pagina"+pg+".html";
+};
+
+pages[currentPage].elements.push(el);
+renderPage();
+}
+
+function addImage(){
+const url=prompt("URL da imagem:");
+const el=document.createElement("div");
+el.className="draggable image";
+el.style.left="80px";
+el.style.top="200px";
+
+const img=document.createElement("img");
+img.src=url;
+el.appendChild(img);
+
+pages[currentPage].elements.push(el);
+renderPage();
+}
+
+function addSocial(){
+const link=prompt("Link da rede social:");
+const icon=prompt("URL do ícone:");
+
+const el=document.createElement("div");
+el.className="draggable social";
+el.style.left="100px";
+el.style.top="260px";
+el.dataset.link=link;
+
+const img=document.createElement("img");
+img.src=icon;
+el.appendChild(img);
+
+pages[currentPage].elements.push(el);
+renderPage();
+}
+
+function setBackground(){
+const url=prompt("URL do fundo:");
+pages[currentPage].background=`url('${url}')`;
+renderPage();
+}
+
+/* ===== EXPORTAR SITE ===== */
+function exportPages(){
+
+pages.forEach((page,i)=>{
+
+let html="";
+page.elements.forEach(el=>{
+
+if(el.classList.contains("text")){
+html+=`<div style="position:absolute;left:${el.style.left};top:${el.style.top};font-size:28px;font-weight:600;">
+${el.innerText}</div>`;
+}
+
+if(el.classList.contains("button")){
+html+=`<a href="${el.dataset.link}" style="
+position:absolute;
+left:${el.style.left};
+top:${el.style.top};
+width:${el.offsetWidth}px;
+height:${el.offsetHeight}px;
+display:flex;align-items:center;justify-content:center;
+background:#22c55e;
+color:white;border-radius:8px;text-decoration:none;">
+${el.innerText}</a>`;
+}
+
+if(el.classList.contains("image")){
+const img=el.querySelector("img");
+html+=`<img src="${img.src}" style="
+position:absolute;left:${el.style.left};top:${el.style.top};
+width:${el.offsetWidth}px;height:${el.offsetHeight}px;">`;
+}
+
+if(el.classList.contains("social")){
+const img=el.querySelector("img");
+html+=`<a href="${el.dataset.link}" style="
+position:absolute;left:${el.style.left};top:${el.style.top};
+width:${el.offsetWidth}px;height:${el.offsetHeight}px;border-radius:50%;overflow:hidden;">
+<img src="${img.src}" style="width:100%;height:100%;">
+</a>`;
+}
+});
+
+const final=`
+<!DOCTYPE html>
+<html>
+<body style="margin:0;background:${page.background};background-size:cover;height:100vh;position:relative;">
+${html}
+</body>
+</html>`;
+
+const blob=new Blob([final],{type:"text/html"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="pagina"+(i+1)+".html";
+a.click();
+
+});
+
+alert("Site exportado!");
+}
+
+/* cria primeira página */
+addPage();
+</script>
+
+</body>
+</html>
